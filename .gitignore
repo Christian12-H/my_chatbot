@@ -1,0 +1,18 @@
+# Python virtual environment
+venv/
+venv.zip
+.venv/
+__pycache__/
+*.pyc
+
+# Temporary Excel files
+~$*.xlsx
+
+# Large binary builds (like ffmpeg)
+ffmpeg-2025-06-26-git-09cd38e9d5-essentials_build/
+
+# VS Code Dev Container specific files (if not needed for Git/deployment)
+.devcontainer/
+
+# Streamlit secrets (uncomment if you have actual secrets and don't want them public)
+# .streamlit/secrets.toml
