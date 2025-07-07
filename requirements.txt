@@ -2,3 +2,6 @@ streamlit
 pandas
 openpyxl
 google-generativeai
+streamlit
+pandas
+openai
