@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+import openai  # works with Groq's OpenAI-compatible endpoint
 
-# --- CONFIGURE GOOGLE GEMINI ---
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel("models/gemini-1.5-flash-latest")
+# --- CONFIGURE GROQ ---
+openai.api_key = st.secrets["groq"]["api_key"]
+openai.api_base = "https://api.groq.com/openai/v1"  # Groq’s base URL
+model_id = "mixtral-8x7b-32768"  # or use llama3-70b-8192 or gemma-7b-it
 
 # --- LOAD DATA FROM XLSX ---
 try:
@@ -20,11 +21,9 @@ st.set_page_config(page_title="Kepler CampusBot", layout="wide")
 
 # --- Sidebar Navigation ---
 with st.sidebar:
-    # Use a native Streamlit image component for the logo
     st.image("kepler-logo.png", width=120)
-    st.header("Navigation") #sidebar header 
+    st.header("Navigation")
 
-    # Only "Chatbot" and "About Me" buttons remain
     if st.button("💬 Chatbot", use_container_width=True, key="chat_btn"):
         st.query_params['page'] = 'chat'
         st.rerun()
@@ -32,17 +31,14 @@ with st.sidebar:
         st.query_params['page'] = 'about'
         st.rerun()
 
-# --- MAIN CONTENT AREA: DISPLAY PAGE BASED ON URL PARAMETER ---
-# Default page is now 'chat' since 'home' is removed
+# --- MAIN CONTENT AREA ---
 current_page = st.query_params.get('page', 'chat')
 
 if current_page == "chat":
-    # --- Chatbot Page Content ---
     st.image("kepler-logo.png", width=120)
     st.markdown("<h2 style='color:#2A527A; text-align:center;'>Welcome to Kepler CampusBot 🎓</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center;'>Ask about Kepler College rules, policies, or services.</p>", unsafe_allow_html=True)
 
-    # --- CHAT DISPLAY ---
     if "history" not in st.session_state:
         st.session_state.history = []
 
@@ -50,30 +46,36 @@ if current_page == "chat":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # --- CHAT INPUT AREA (Simplified) ---
-    # Use st.chat_input for a clean chat interface
     user_input = st.chat_input("Type your question...", key="chat_input")
 
-    # --- PROCESS USER QUESTION ---
     if user_input:
-        # Add user message to chat history
         st.session_state.history.append({"role": "user", "content": user_input})
-        with st.chat_message("user"): st.markdown(user_input)
-        
-        # Generate response from Gemini based on context
-        prompt = f"""You are Kepler CampusBot. Use this Q&A to help answer:\n{context}\n\nUser: {user_input}"""
-        response = model.generate_content(prompt)
-        answer = response.text.strip()
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-        # Display and save assistant's response
+        # --- Prompt to Groq-hosted model ---
+        prompt = f"You are Kepler CampusBot. Use this Q&A to help answer:\n{context}\n\nUser: {user_input}\nAnswer:"
+
+        try:
+            completion = openai.ChatCompletion.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant for Kepler College."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            answer = completion.choices[0].message.content.strip()
+        except Exception as e:
+            answer = f"Error from Groq API: {e}"
+
         st.session_state.history.append({"role": "assistant", "content": answer})
-        with st.chat_message("assistant"): st.markdown(answer)
-        
-        # Rerun to clear the input box and update chat history
-        st.rerun() 
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+
+        st.rerun()
 
 elif current_page == "about":
-    # --- About Me Page Content ---
     st.title("About Kepler College Chatbot")
     st.markdown(
         """
@@ -81,18 +83,16 @@ elif current_page == "about":
         My knowledge is based on official college resources, and my goal is to provide you with instant, accurate information.
         """
     )
-    
-    st.markdown("---") # Add a horizontal rule for separation
+
+    st.markdown("---")
 
     st.markdown(
         """
         ### Contact Us
-        For more detailed information, personalized assistance, or questions beyond my knowledge base, you can contact the Kepler College team:
-        
         - **Phone:** `+250789773042`
-        - **Website:** Visit the official Kepler website at [**keplercollege.ac.rw**](https://keplercollege.ac.rw)
-        - **Admissions:** For admissions-related questions, contact the Admissions team at [**admissions@keplercollege.ac.rw**](mailto:admissions@keplercollege.ac.rw)
+        - **Website:** [keplercollege.ac.rw](https://keplercollege.ac.rw)
+        - **Admissions:** [admissions@keplercollege.ac.rw](mailto:admissions@keplercollege.ac.rw)
         """
     )
-    
+
     st.markdown("---")
