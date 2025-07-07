@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
-import openai  # works with Groq's OpenAI-compatible endpoint
+import openai
 
-# --- CONFIGURE GROQ ---
-openai.api_key = st.secrets["groq"]["api_key"]
-openai.api_base = "https://api.groq.com/openai/v1"  # Groq’s base URL
-model_id = "mixtral-8x7b-32768"  # or use llama3-70b-8192 or gemma-7b-it
+# --- CONFIGURE OPENAI ---
+openai.api_key = st.secrets["openai"]["api_key"]
+model_id = "gpt-3.5-turbo"  # or use "gpt-4" if your key has access
 
 # --- LOAD DATA FROM XLSX ---
 try:
@@ -53,21 +52,21 @@ if current_page == "chat":
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # --- Prompt to Groq-hosted model ---
-        prompt = f"You are Kepler CampusBot. Use this Q&A to help answer:\n{context}\n\nUser: {user_input}\nAnswer:"
+        # OpenAI prompt with Q&A context
+        prompt = f"""You are Kepler CampusBot. Use this Q&A to help answer:\n{context}\n\nUser: {user_input}\nAnswer:"""
 
         try:
-            completion = openai.ChatCompletion.create(
+            response = openai.ChatCompletion.create(
                 model=model_id,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant for Kepler College."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.5
+                temperature=0.5,
             )
-            answer = completion.choices[0].message.content.strip()
+            answer = response.choices[0].message.content.strip()
         except Exception as e:
-            answer = f"Error from Groq API: {e}"
+            answer = f"Error from OpenAI: {e}"
 
         st.session_state.history.append({"role": "assistant", "content": answer})
         with st.chat_message("assistant"):
@@ -83,16 +82,13 @@ elif current_page == "about":
         My knowledge is based on official college resources, and my goal is to provide you with instant, accurate information.
         """
     )
-
     st.markdown("---")
-
     st.markdown(
         """
         ### Contact Us
-        - **Phone:** `+250789773042`
-        - **Website:** [keplercollege.ac.rw](https://keplercollege.ac.rw)
+        - **Phone:** +250789773042  
+        - **Website:** [keplercollege.ac.rw](https://keplercollege.ac.rw)  
         - **Admissions:** [admissions@keplercollege.ac.rw](mailto:admissions@keplercollege.ac.rw)
         """
     )
-
     st.markdown("---")
